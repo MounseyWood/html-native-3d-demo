@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>3D as an HTML Citizen — a progressive-enhancement demo</title>
+<style>
+  /* ── Token system · PMS ecru fabric-named scale ─────────────── */
+  :root{
+    --ink:        #1d1d1b;
+    --calico:     #f5f0e6;
+    --twill:      #ece5d8;
+    --selvedge:   #d8cfbc;
+    --herringbone:#c4b89f;
+    --paper:      #fbf8f1;
+    --thread:     #6d675c;
+    --cube:       240px;
+    --max: 880px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#ece5d8; --calico:#161512; --twill:#201e1a; --selvedge:#3a372f;
+      --herringbone:#57503f; --paper:#26241f; --thread:#a39b8a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#ece5d8; --calico:#161512; --twill:#201e1a; --selvedge:#3a372f;
+    --herringbone:#57503f; --paper:#26241f; --thread:#a39b8a;
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family: Arial, Helvetica, sans-serif;
+    background: var(--calico); color: var(--ink);
+    line-height: 1.55; font-size: 16px;
+    transition: background .25s ease, color .25s ease;
+  }
+  main{ max-width: var(--max); margin: 0 auto; padding: 0 24px 96px; }
+
+  .eyebrow{
+    font-size: 11px; letter-spacing:.22em; text-transform: uppercase;
+    border-bottom: 1px solid var(--ink);
+    display:inline-block; padding-bottom: 4px; margin-bottom: 16px;
+  }
+  h1{ font-size: clamp(28px, 6vw, 52px); font-weight:700; letter-spacing:-.02em; line-height:1.05; overflow-wrap:break-word; }
+  h2{ font-size: clamp(19px, 3.2vw, 22px); font-weight:700; margin-bottom:8px; }
+  .lede{ font-size: clamp(16px, 2.4vw, 18px); max-width:62ch; margin-top:18px; }
+  .muted{ color: var(--thread); font-size:14px; }
+  p{ max-width: 68ch; }
+
+  header.masthead{ padding:48px 0 32px; border-bottom:2px solid var(--ink); position:relative; }
+  .theme-toggle{
+    position:absolute; top:48px; right:0;
+    font-family:inherit; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    padding:8px 12px; border:1.5px solid var(--ink);
+    background:transparent; color:var(--ink); cursor:pointer;
+  }
+  .theme-toggle:hover{ background:var(--ink); color:var(--calico); }
+  .theme-toggle:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+
+  /* ── Capability ladder ──────────────────────────────────────── */
+  .ladder{ margin:40px 0 8px; border:2px solid var(--ink); background:var(--twill); }
+  .ladder-head{
+    padding:12px 16px; border-bottom:1px solid var(--ink);
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;
+  }
+  .ladder-head strong{ font-size:12px; letter-spacing:.18em; text-transform:uppercase; }
+  .rung{
+    display:grid; grid-template-columns:84px 1fr auto; gap:12px; align-items:center;
+    padding:14px 16px; border-bottom:1px solid var(--selvedge);
+  }
+  .rung:last-child{ border-bottom:none; }
+  .rung .tier{ font-size:26px; font-weight:700; }
+  .rung .what{ font-size:14px; }
+  .rung .what em{ font-style:normal; font-weight:700; }
+  .badge{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    padding:6px 10px; border:1.5px solid var(--ink); white-space:nowrap;
+  }
+  .badge.yes{ background:var(--ink); color:var(--calico); }
+  .badge.no{ background:transparent; color:var(--ink); opacity:.55; }
+  .badge.checking{ opacity:.4; }
+
+  section{ padding:56px 0 8px; }
+  section + section{ border-top:1px solid var(--selvedge); }
+  .tier-mark{
+    font-size:clamp(44px, 8vw, 64px); font-weight:700; color:var(--selvedge);
+    line-height:1; margin-bottom:4px;
+  }
+  .demo{
+    background:var(--twill); border:1.5px solid var(--ink);
+    margin:24px 0; padding:32px; display:flex; flex-direction:column;
+    align-items:center; gap:20px;
+  }
+  pre{
+    background:var(--paper); border:1px solid var(--selvedge);
+    padding:16px 18px; overflow-x:auto; font-size:13px; line-height:1.5;
+    font-family:"Courier New", monospace; margin:16px 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  code{ font-family:"Courier New", monospace; font-size:.92em; background:var(--paper); padding:1px 4px; border:1px solid var(--selvedge); }
+  pre code{ border:none; padding:0; background:none; }
+  .note{
+    border-left:3px solid var(--ink); background:var(--paper);
+    padding:12px 16px; font-size:14px; margin:16px 0; max-width:68ch;
+  }
+
+  /* ── Tier 0 · CSS 3D swatch cube ────────────────────────────── */
+  .scene{ width:var(--cube); height:var(--cube); perspective:900px; }
+  .cube{
+    width:100%; height:100%; position:relative;
+    transform-style:preserve-3d;
+    animation:spin 22s linear infinite;
+  }
+  .scene:hover .cube, .cube:focus-within{ animation-play-state:paused; }
+  @keyframes spin{
+    from{ transform:rotateX(-14deg) rotateY(0deg); }
+    to  { transform:rotateX(-14deg) rotateY(360deg); }
+  }
+  .face{
+    position:absolute; inset:0;
+    background:var(--paper); border:1.5px solid var(--ink);
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    gap:8px; padding:14px; text-align:center;
+    backface-visibility:hidden;
+  }
+  .face h3{ font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+  .face p{ font-size:12px; color:var(--thread); }
+  .face.f1{ transform:rotateY(  0deg) translateZ(calc(var(--cube)/2)); }
+  .face.f2{ transform:rotateY( 90deg) translateZ(calc(var(--cube)/2)); }
+  .face.f3{ transform:rotateY(180deg) translateZ(calc(var(--cube)/2)); }
+  .face.f4{ transform:rotateY(270deg) translateZ(calc(var(--cube)/2)); }
+  .face.f5{ transform:rotateX( 90deg) translateZ(calc(var(--cube)/2)); }
+  .face.f6{ transform:rotateX(-90deg) translateZ(calc(var(--cube)/2)); }
+  .weave{
+    width:35%; aspect-ratio:1;
+    background:
+      repeating-linear-gradient(0deg,  var(--ink) 0 6px, transparent 6px 12px),
+      repeating-linear-gradient(90deg, var(--herringbone) 0 6px, var(--twill) 6px 12px);
+  }
+  .weave.satin{
+    background:
+      repeating-linear-gradient(0deg,  var(--ink) 0 2px, transparent 2px 12px),
+      repeating-linear-gradient(90deg, var(--herringbone) 0 10px, var(--twill) 10px 12px);
+  }
+  .weave.basket{
+    background:
+      repeating-linear-gradient(0deg,  var(--ink) 0 12px, transparent 12px 24px),
+      repeating-linear-gradient(90deg, var(--herringbone) 0 12px, var(--twill) 12px 24px);
+  }
+  .face button{
+    font-family:inherit; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    padding:8px 14px; border:1.5px solid var(--ink); background:var(--ink); color:var(--calico);
+    cursor:pointer;
+  }
+  .face button:hover{ background:var(--paper); color:var(--ink); }
+  .face button:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  #cube-status{ min-height:1.4em; font-size:13px; text-align:center; }
+
+  /* ── Tier 1 · native <model> ────────────────────────────────── */
+  model{
+    width:min(420px, 100%); aspect-ratio:4/3; height:auto;
+    background:var(--paper); border:1.5px solid var(--ink); display:block;
+  }
+  model img, .fallback-img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .ar-wrap{ text-align:center; }
+  .ar-link{
+    display:inline-block; border:1.5px solid var(--ink);
+    line-height:0; background:var(--paper);
+  }
+  .ar-link img{ width:132px; height:132px; object-fit:cover; display:block; }
+  .ar-link:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+  .ar-caption{ margin-top:10px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink); }
+
+  /* ── Tier 2 · zero-dependency WebGL loom ────────────────────── */
+  #loom{
+    width:min(420px, 100%); aspect-ratio:4/3;
+    background:var(--paper); border:1.5px solid var(--ink);
+    display:block; touch-action:none; cursor:grab;
+  }
+  #loom:active{ cursor:grabbing; }
+  model-viewer{
+    width:min(420px, 100%); aspect-ratio:4/3; height:auto;
+    background:var(--paper); border:1.5px solid var(--ink);
+    --poster-color: var(--paper);
+  }
+
+  footer{
+    border-top:2px solid var(--ink); margin-top:64px; padding-top:20px;
+    font-size:12px; color:var(--thread); display:flex; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .cube{ animation:none; transform:rotateX(-18deg) rotateY(-32deg); }
+    html{ scroll-behavior:auto; }
+    body{ transition:none; }
+  }
+  @media (max-width: 640px){
+    :root{ --cube:176px; }
+    main{ padding:0 16px 72px; }
+    header.masthead{ padding-top:32px; }
+    .theme-toggle{ position:static; margin-bottom:20px; display:inline-block; }
+    .rung{ grid-template-columns:52px 1fr; row-gap:8px; }
+    .rung .tier{ font-size:20px; }
+    .rung .badge{ grid-column:2; justify-self:start; }
+    .demo{ padding:20px 14px; }
+    pre{ font-size:12px; padding:12px; }
+    section{ padding:40px 0 8px; }
+    .face{ gap:5px; padding:10px; }
+    .face p{ font-size:10px; }
+    .face button{ padding:7px 10px; font-size:10px; }
+  }
+  @media (max-width: 360px){
+    :root{ --cube:148px; }
+    .face h3{ font-size:10px; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-live="polite">Theme: auto</button>
+    <span class="eyebrow">Digitising Fabrics · Technical Study 01</span>
+    <h1>3D as an HTML citizen</h1>
+    <p class="lede">
+      Three rungs of the same ladder: 3D that lives <em>in the document</em> rather than
+      sealed inside a canvas. Each tier below is progressively enhanced — the page detects
+      what your browser supports, live, and tells you.
+    </p>
+  </header>
+
+  <div class="ladder" aria-label="Live browser capability report">
+    <div class="ladder-head">
+      <strong>What this browser can do right now</strong>
+      <span class="muted" id="ua-note">detecting…</span>
+    </div>
+    <div class="rung">
+      <span class="tier">0</span>
+      <span class="what"><em>CSS 3D transforms</em> — real DOM elements in 3D space. No JavaScript, no canvas.</span>
+      <span class="badge checking" id="badge-css">checking</span>
+    </div>
+    <div class="rung">
+      <span class="tier">1</span>
+      <span class="what"><em>&lt;model&gt; element</em> — a native HTML tag for 3D, like <code>&lt;img&gt;</code> for images. Safari / visionOS-first.</span>
+      <span class="badge checking" id="badge-model">checking</span>
+    </div>
+    <div class="rung">
+      <span class="tier">1·AR</span>
+      <span class="what"><em>AR Quick Look</em> — <code>&lt;a rel="ar"&gt;</code> places a USDZ model in your room. iPhone / iPad.</span>
+      <span class="badge checking" id="badge-ar">checking</span>
+    </div>
+    <div class="rung">
+      <span class="tier">2</span>
+      <span class="what"><em>WebGL / WebGPU</em> — scripted 3D in a canvas. Below: a loom written from scratch, no libraries, no network.</span>
+      <span class="badge checking" id="badge-gl">checking</span>
+    </div>
+  </div>
+  <p class="muted">This ladder is itself the lesson: progressive enhancement means every student sees <em>something</em>, and better browsers see more.</p>
+
+  <!-- ── TIER 0 ── -->
+  <section id="tier-0">
+    <div class="tier-mark">0</div>
+    <h2>CSS 3D — the DOM is already three-dimensional</h2>
+    <p>
+      This swatch cube is not a rendering. Every face is an ordinary HTML panel —
+      headings, text, a working button — pushed into 3D with
+      <code>transform-style:&nbsp;preserve-3d</code>. Screen readers read it, keyboard
+      focus reaches it, CSS variables style it — which is why it re-dyes itself instantly
+      when you switch theme. Hover (or tab into it) to pause the spin.
+    </p>
+
+    <div class="demo">
+      <div class="scene">
+        <div class="cube" id="cube">
+          <div class="face f1"><h3>Plain weave</h3><div class="weave" aria-hidden="true"></div><p>1/1 · over, under</p></div>
+          <div class="face f2"><h3>Satin</h3><div class="weave satin" aria-hidden="true"></div><p>long warp floats</p></div>
+          <div class="face f3"><h3>Basket</h3><div class="weave basket" aria-hidden="true"></div><p>2/2 · paired ends</p></div>
+          <div class="face f4">
+            <h3>A real button</h3>
+            <button type="button" id="speed-btn">Change speed</button>
+            <p>proof this is DOM, not pixels</p>
+          </div>
+          <div class="face f5"><h3>Top</h3><p>warp direction ↑</p></div>
+          <div class="face f6"><h3>Bottom</h3><p>weft direction →</p></div>
+        </div>
+      </div>
+      <p id="cube-status" class="muted" role="status">Cube spinning at 1×. The button on face four works mid-rotation.</p>
+    </div>
+
+<pre><code>.cube  { transform-style: preserve-3d; animation: spin 22s linear infinite; }
+.face  { position: absolute; backface-visibility: hidden; }
+.face.f1 { transform: rotateY(0deg)  translateZ(calc(var(--cube) / 2)); }
+.face.f2 { transform: rotateY(90deg) translateZ(calc(var(--cube) / 2)); }  /* … */</code></pre>
+
+    <div class="note">
+      <strong>Why this matters pedagogically:</strong> the WICG <em>HTML-in-Canvas</em> proposal
+      (rendering live DOM as textures inside WebGL scenes) chases exactly this property —
+      accessible, styleable UI inside 3D. CSS 3D already delivers a constrained version of it,
+      today, in every browser, in a single file.
+    </div>
+  </section>
+
+  <!-- ── TIER 1 ── -->
+  <section id="tier-1">
+    <div class="tier-mark">1</div>
+    <h2>The native <code>&lt;model&gt;</code> element</h2>
+    <p>
+      Shipped in Safari 26 on visionOS; arriving on iPhone, iPad and Mac with the OS 27
+      releases this autumn (in developer beta now), with a W3C proposal behind it. One tag,
+      no libraries: the browser itself renders the model. <code>stagemode="orbit"</code>
+      gives drag-to-rotate for free; unsupported browsers fall through to the
+      <code>&lt;img&gt;</code> inside — the same graceful-degradation pattern as <code>&lt;video&gt;</code>.
+    </p>
+
+    <div class="demo">
+      <model stagemode="orbit" id="native-model" aria-label="Teapot, 3D model">
+        <source src="https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz" type="model/vnd.usdz+zip">
+        <source src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/glTF-Binary/SheenChair.glb" type="model/gltf-binary">
+        <img class="fallback-img" id="model-fallback-img" alt="This browser does not yet support the model element — see Tier 2 below for the scripted equivalent." src="">
+      </model>
+      <p class="muted" id="model-note">Native rendering status shown in the ladder above.</p>
+
+      <div class="ar-wrap" id="ar-wrap">
+        <a class="ar-link" rel="ar" id="ar-anchor"
+           href="https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz"><img
+             src="https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.jpg"
+             alt="Teapot — tap to view in your room with AR Quick Look"
+             width="132" height="132"></a>
+        <p class="ar-caption">↑ Tap to place it in your room</p>
+        <p class="muted">AR Quick Look launches from Safari itself — in-app browsers
+        and preview panes (including chat-app viewers) won't trigger it.
+        Safari badges the corner of the image with a cube when AR is available.</p>
+      </div>
+    </div>
+
+<pre><code>&lt;model stagemode="orbit" style="width:420px; aspect-ratio:4/3"&gt;
+  &lt;source src="teapot.usdz" type="model/vnd.usdz+zip"&gt;
+  &lt;source src="chair.glb"   type="model/gltf-binary"&gt;
+  &lt;img src="fallback.jpg" alt="A teapot"&gt;   &lt;!-- graceful degradation --&gt;
+&lt;/model&gt;</code></pre>
+
+    <div class="note">
+      <strong>Studio use:</strong> a digitised garment scanned to USDZ (Object Capture on a
+      LiDAR iPhone, or CLO3D → USD export) can sit inline in a handout exactly like an image —
+      and on an iPad, students drag it off the page into the room at real size. The physical
+      → digital → physical loop, in one tag.
+    </div>
+  </section>
+
+  <!-- ── TIER 2 ── -->
+  <section id="tier-2">
+    <div class="tier-mark">2</div>
+    <h2>Scripted 3D — a loom in raw WebGL, zero dependencies</h2>
+    <p>
+      This is the other end of the spectrum from Tier 1: no tag does the work, so the script
+      does everything — geometry, lighting, camera, interaction. The plain-weave swatch below
+      is generated procedurally (every warp and weft yarn is a tube of triangles built in
+      JavaScript) and rendered with nothing but the browser's own WebGL. No library, no CDN,
+      no network. It works from a file on your phone. <strong>Drag or swipe to turn it.</strong>
+    </p>
+
+    <div class="demo">
+      <canvas id="loom" aria-label="Interactive 3D plain-weave swatch: warp and weft yarns interlacing, drag to rotate"></canvas>
+      <p class="muted" id="loom-note">Plain weave, 1/1 · warp in ink, weft in thread · re-dyes with the theme.</p>
+    </div>
+
+<pre><code>// The whole pipeline, hand-rolled:
+buildYarn(path)        // sweep a circle along a sine curve → triangles
+gl.bufferData(...)     // upload geometry to the GPU
+mat4.perspective(...)  // camera
+N·L shading            // one light, two yarn colours, done</code></pre>
+
+    <div class="note" id="mv-note">
+      <strong>The production shortcut — <code>&lt;model-viewer&gt;</code>:</strong>
+      in real projects you rarely hand-roll WebGL; you load Google's
+      <code>&lt;model-viewer&gt;</code> component and point it at a GLB.
+      That needs one external script and a network connection — which is exactly
+      the fragility this file avoids for its core demo.
+      <span id="mv-status" style="display:block; margin-top:8px;">Checking whether the model-viewer CDN is reachable from here…</span>
+    </div>
+    <div class="demo" id="mv-demo" style="display:none;">
+      <model-viewer
+        src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/SheenChair/glTF-Binary/SheenChair.glb"
+        alt="An armchair upholstered in fabric with visible sheen, demonstrating the glTF sheen material for textiles"
+        camera-controls auto-rotate shadow-intensity="1" exposure="0.9">
+      </model-viewer>
+      <p class="muted">Bonus: Khronos's <em>SheenChair</em> via model-viewer — its material is <code>KHR_materials_sheen</code>, built for woven fabric.</p>
+    </div>
+
+<pre><code>&lt;script type="module"
+  src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"&gt;&lt;/script&gt;
+
+&lt;model-viewer src="chair.glb" camera-controls auto-rotate
+              alt="An upholstered armchair"&gt;&lt;/model-viewer&gt;</code></pre>
+  </section>
+
+  <!-- ── The pattern ── -->
+  <section id="pattern">
+    <div class="tier-mark">Σ</div>
+    <h2>The production pattern for your teaching tools</h2>
+    <p>
+      The devil is what the tool forgets — and what canvas-only 3D forgets is the document:
+      headings, focus order, alt text, CSS tokens. The ladder above keeps the document primary.
+      One decision tree:
+    </p>
+<pre><code>if ('HTMLModelElement' in window)   → use &lt;model&gt;           (native, USDZ/GLB)
+else if (WebGL available)           → scripted canvas 3D      (self-contained,
+                                                               or model-viewer + GLB online)
+always                              → CSS 3D + &lt;img&gt; fallback (works offline)</code></pre>
+    <p class="muted">
+      Tier 0 and the WebGL loom are fully self-contained. Tier 1's models and the optional
+      model-viewer chair load from the live web (Apple's Quick Look gallery, Khronos glTF
+      samples). For a fully offline handout, save the <code>.usdz</code>/<code>.glb</code>
+      beside the HTML and point the <code>src</code> attributes at local paths.
+    </p>
+  </section>
+
+  <footer>
+    <span>Matthew Mounsey-Wood FHEA MA (RCA) LCF Alumni</span>
+    <span>Standalone HTML · no build step · v5</span>
+  </footer>
+</main>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ── Theme: auto → dark → light ─────────────────────────────── */
+  var root = document.documentElement;
+  var toggle = document.getElementById('theme-toggle');
+  var modes = ['auto','dark','light'];
+  var mode = 0;
+  function tokens(){
+    var css = getComputedStyle(root);
+    return {
+      ink:    css.getPropertyValue('--ink').trim(),
+      paper:  css.getPropertyValue('--paper').trim(),
+      thread: css.getPropertyValue('--thread').trim(),
+      herr:   css.getPropertyValue('--herringbone').trim()
+    };
+  }
+  function applyTheme(){
+    var m = modes[mode];
+    if (m === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', m);
+    toggle.textContent = 'Theme: ' + m;
+    paintFallbackSVG();
+    if (window.__loomRecolour) window.__loomRecolour();
+  }
+  toggle.addEventListener('click', function(){ mode = (mode+1) % modes.length; applyTheme(); });
+  if (window.matchMedia) {
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+      if (modes[mode] === 'auto') { paintFallbackSVG(); if (window.__loomRecolour) window.__loomRecolour(); }
+    });
+  }
+
+  /* ── Theme-aware SVG fallback for <model> ───────────────────── */
+  function paintFallbackSVG(){
+    var t = tokens();
+    var svg =
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 320'>" +
+      "<rect width='420' height='320' fill='" + t.paper + "'/>" +
+      "<text x='210' y='150' text-anchor='middle' font-family='Arial' font-size='15' fill='" + t.ink + "'>&lt;model&gt; not supported here yet</text>" +
+      "<text x='210' y='176' text-anchor='middle' font-family='Arial' font-size='13' fill='" + t.thread + "'>Tier 2 below works everywhere</text>" +
+      "</svg>";
+    document.getElementById('model-fallback-img').src =
+      'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  /* ── Capability detection ───────────────────────────────────── */
+  function set(id, ok, yes, no){
+    var b = document.getElementById(id);
+    b.textContent = ok ? (yes || 'available here') : (no || 'not yet');
+    b.className = 'badge ' + (ok ? 'yes' : 'no');
+  }
+  set('badge-css', window.CSS && CSS.supports('transform-style','preserve-3d'));
+
+  var hasModel = ('HTMLModelElement' in window) ||
+                 !(document.createElement('model') instanceof HTMLUnknownElement);
+  set('badge-model', hasModel, 'native', 'falls back to image');
+  if (hasModel) document.getElementById('model-note').textContent =
+    'Rendered natively by the browser — drag to orbit.';
+
+  var a = document.createElement('a');
+  var hasAR = !!(a.relList && a.relList.supports && a.relList.supports('ar'));
+  set('badge-ar', hasAR, 'tap to place', 'iOS / iPadOS Safari only');
+  if (!hasAR) document.getElementById('ar-wrap').style.display = 'none';
+
+  var glTest = null;
+  try {
+    glTest = document.createElement('canvas').getContext('webgl2') ||
+             document.createElement('canvas').getContext('webgl');
+  } catch(e){}
+  set('badge-gl', !!glTest, ('gpu' in navigator) ? 'WebGL + WebGPU' : 'WebGL', 'unavailable');
+
+  document.getElementById('ua-note').textContent =
+    hasModel ? 'this browser speaks native 3D HTML'
+             : 'this browser uses scripted 3D';
+
+  applyTheme();
+
+  /* ── Tier 0: real DOM button inside the 3D cube ─────────────── */
+  var cube = document.getElementById('cube');
+  var status = document.getElementById('cube-status');
+  var speeds = [22,8,44], labels = ['1×','3×','0.5×'], si = 0;
+  document.getElementById('speed-btn').addEventListener('click', function(){
+    si = (si+1) % speeds.length;
+    cube.style.animationDuration = speeds[si] + 's';
+    status.textContent = 'Cube spinning at ' + labels[si] +
+      '. You just clicked a live button on a rotating 3D face.';
+  });
+
+  /* ══ TIER 2: zero-dependency WebGL loom ═════════════════════════
+     Plain weave: warp yarns run in Z, weft yarns run in X, each a
+     tube of triangles swept along a sine wave. No libraries.      */
+  var canvas = document.getElementById('loom');
+  var gl = null;
+  try { gl = canvas.getContext('webgl', {antialias:true}); } catch(e){}
+  if (!gl){
+    document.getElementById('loom-note').textContent =
+      'WebGL unavailable in this browser — the CSS cube above is your 3D tier.';
+  } else {
+    initLoom(gl);
+  }
+
+  function hexToRGB(h){
+    h = h.replace('#','');
+    if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return [parseInt(h.substr(0,2),16)/255,
+            parseInt(h.substr(2,2),16)/255,
+            parseInt(h.substr(4,2),16)/255];
+  }
+
+  function initLoom(gl){
+    /* ---- shaders ---- */
+    var vs =
+      'attribute vec3 aPos; attribute vec3 aNrm; attribute float aKind;' +
+      'uniform mat4 uMVP; uniform mat4 uModel;' +
+      'varying vec3 vN; varying float vK;' +
+      'void main(){' +
+      '  vN = mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz) * aNrm;' +
+      '  vK = aKind;' +
+      '  gl_Position = uMVP * vec4(aPos, 1.0);' +
+      '}';
+    var fs =
+      'precision mediump float;' +
+      'varying vec3 vN; varying float vK;' +
+      'uniform vec3 uWarp; uniform vec3 uWeft; uniform vec3 uBg;' +
+      'void main(){' +
+      '  vec3 N = normalize(vN);' +
+      '  vec3 L = normalize(vec3(0.4, 0.8, 0.6));' +
+      '  float d = max(dot(N, L), 0.0) * 0.65 + 0.45;' +
+      '  vec3 base = mix(uWarp, uWeft, step(0.5, vK));' +
+      '  gl_FragColor = vec4(base * d, 1.0);' +
+      '}';
+    function sh(type, src){
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      return s;
+    }
+    var prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    /* ---- geometry: swept yarn tubes ---- */
+    var N_THREADS = 9;        // yarns per direction
+    var SPACING   = 2.0 / N_THREADS;
+    var RADIUS    = SPACING * 0.34;
+    var AMP       = RADIUS * 1.05;   // undulation so yarns interlace
+    var SEG       = 64;              // samples along each yarn
+    var RING      = 8;               // ring segments around the tube
+
+    var verts = [], idx = [];
+    // kind: 0 = warp (runs along Z), 1 = weft (runs along X)
+    function addYarn(i, kind){
+      var offset = -1 + SPACING * (i + 0.5);
+      var base = verts.length / 7;
+      for (var s = 0; s <= SEG; s++){
+        var t = -1 + 2 * s / SEG;                       // along the yarn
+        // plain weave: phase alternates per yarn index
+        var phase = Math.PI * (t / SPACING) + Math.PI * i;
+        var y = AMP * Math.sin(kind === 0 ? phase : phase + Math.PI);
+        // path point
+        var px = kind === 0 ? offset : t;
+        var pz = kind === 0 ? t      : offset;
+        // tangent (approx) for the ring frame
+        var dy = AMP * Math.cos(kind === 0 ? phase : phase + Math.PI) * Math.PI / SPACING * (2 / SEG);
+        // build ring: two perpendicular vectors to the yarn axis
+        for (var r = 0; r < RING; r++){
+          var a = 2 * Math.PI * r / RING;
+          var cx = Math.cos(a) * RADIUS, cy = Math.sin(a) * RADIUS;
+          var vx, vy, vz, nx, ny, nz;
+          if (kind === 0){ // axis ≈ Z: ring in X/Y
+            vx = px + cx; vy = y + cy; vz = pz;
+            nx = Math.cos(a); ny = Math.sin(a); nz = 0;
+          } else {         // axis ≈ X: ring in Z/Y
+            vx = px; vy = y + cy; vz = pz + cx;
+            nx = 0; ny = Math.sin(a); nz = Math.cos(a);
+          }
+          verts.push(vx, vy, vz, nx, ny, nz, kind);
+        }
+      }
+      for (var s2 = 0; s2 < SEG; s2++){
+        for (var r2 = 0; r2 < RING; r2++){
+          var r3 = (r2 + 1) % RING;
+          var a0 = base + s2*RING + r2, a1 = base + s2*RING + r3;
+          var b0 = base + (s2+1)*RING + r2, b1 = base + (s2+1)*RING + r3;
+          idx.push(a0,b0,a1,  a1,b0,b1);
+        }
+      }
+    }
+    for (var i = 0; i < N_THREADS; i++){ addYarn(i, 0); addYarn(i, 1); }
+
+    var vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+    var ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    /* 18 yarns × 65 rings × 8 verts = 9,360 vertices — comfortably
+       inside Uint16, so no extension needed on any device */
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW);
+
+    var STRIDE = 7*4;
+    var aPos = gl.getAttribLocation(prog,'aPos');
+    var aNrm = gl.getAttribLocation(prog,'aNrm');
+    var aKind= gl.getAttribLocation(prog,'aKind');
+    gl.enableVertexAttribArray(aPos);  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, STRIDE, 0);
+    gl.enableVertexAttribArray(aNrm);  gl.vertexAttribPointer(aNrm, 3, gl.FLOAT, false, STRIDE, 12);
+    gl.enableVertexAttribArray(aKind); gl.vertexAttribPointer(aKind,1, gl.FLOAT, false, STRIDE, 24);
+
+    var uMVP  = gl.getUniformLocation(prog,'uMVP');
+    var uModel= gl.getUniformLocation(prog,'uModel');
+    var uWarp = gl.getUniformLocation(prog,'uWarp');
+    var uWeft = gl.getUniformLocation(prog,'uWeft');
+
+    gl.enable(gl.DEPTH_TEST);
+
+    /* ---- minimal matrix maths ---- */
+    function persp(fov, asp, n, f){
+      var t = 1/Math.tan(fov/2);
+      return [t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0];
+    }
+    function mul(a,b){
+      var o = new Array(16);
+      for (var c=0;c<4;c++) for (var r=0;r<4;r++){
+        o[c*4+r]=0;
+        for (var k=0;k<4;k++) o[c*4+r]+=a[k*4+r]*b[c*4+k];
+      }
+      return o;
+    }
+    function rotX(t){ var c=Math.cos(t),s=Math.sin(t); return [1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1]; }
+    function rotY(t){ var c=Math.cos(t),s=Math.sin(t); return [c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1]; }
+    function trans(x,y,z){ return [1,0,0,0, 0,1,0,0, 0,0,1,0, x,y,z,1]; }
+
+    /* ---- interaction: drag / swipe to orbit ---- */
+    var rx = -0.55, ry = 0.35, dragging = false, lx = 0, ly = 0;
+    var idleSpin = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function down(x,y){ dragging = true; lx = x; ly = y; idleSpin = false; }
+    function move(x,y){
+      if (!dragging) return;
+      ry += (x - lx) * 0.008; rx += (y - ly) * 0.008;
+      rx = Math.max(-1.5, Math.min(0.2, rx));
+      lx = x; ly = y;
+    }
+    canvas.addEventListener('pointerdown', function(e){ canvas.setPointerCapture(e.pointerId); down(e.clientX, e.clientY); });
+    canvas.addEventListener('pointermove', function(e){ move(e.clientX, e.clientY); });
+    canvas.addEventListener('pointerup',   function(){ dragging = false; });
+    canvas.addEventListener('pointercancel', function(){ dragging = false; });
+
+    /* ---- theme-aware colours ---- */
+    var cWarp, cWeft, cBg;
+    function recolour(){
+      var t = tokens();
+      cWarp = hexToRGB(t.ink);
+      cWeft = hexToRGB(t.thread);   /* thread token: visible on paper in BOTH themes */
+      cBg   = hexToRGB(t.paper);
+    }
+    recolour();
+    window.__loomRecolour = recolour;
+
+    /* ---- render loop ---- */
+    var idxType = gl.UNSIGNED_SHORT;
+    function resize(){
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      if (canvas.width !== w*dpr || canvas.height !== h*dpr){
+        canvas.width = w*dpr; canvas.height = h*dpr;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+      }
+    }
+    function frame(){
+      resize();
+      if (idleSpin) ry += 0.003;
+      gl.clearColor(cBg[0], cBg[1], cBg[2], 1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      var asp = canvas.width / Math.max(canvas.height, 1);
+      var model = mul(rotY(ry), rotX(0));
+      model = mul(rotX(rx), model);
+      var view = trans(0, 0, -3.4);
+      var mvp = mul(persp(0.9, asp, 0.1, 20), mul(view, model));
+      gl.uniformMatrix4fv(uMVP, false, new Float32Array(mvp));
+      gl.uniformMatrix4fv(uModel, false, new Float32Array(model));
+      gl.uniform3fv(uWarp, cWarp);
+      gl.uniform3fv(uWeft, cWeft);
+      gl.drawElements(gl.TRIANGLES, idx.length, idxType, 0);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ── Optional enhancement: try model-viewer from CDN ────────── */
+  var mvStatus = document.getElementById('mv-status');
+  function loadMV(urls){
+    if (!urls.length){
+      mvStatus.textContent = 'CDN unreachable from this context — which proves the point: the loom above needed nothing.';
+      return;
+    }
+    var s = document.createElement('script');
+    s.type = 'module'; s.src = urls[0];
+    s.onerror = function(){ loadMV(urls.slice(1)); };
+    s.onload = function(){
+      customElements.whenDefined('model-viewer').then(function(){
+        mvStatus.textContent = 'CDN reachable — bonus chair loaded below.';
+        document.getElementById('mv-demo').style.display = '';
+      });
+    };
+    document.head.appendChild(s);
+  }
+  loadMV([
+    'https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js',
+    'https://unpkg.com/@google/model-viewer@4.0.0/dist/model-viewer.min.js',
+    'https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js'
+  ]);
+})();
+</script>
+</body>
+</html>
