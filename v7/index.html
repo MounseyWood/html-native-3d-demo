@@ -358,27 +358,24 @@
     <p>
       Shipped in Safari 26 on visionOS, and since 14 September 2026 in Safari 27 on iPhone,
       iPad and Mac (also offered as a standalone Safari update for macOS Sequoia and Tahoe).
-      It is Safari-only: Chrome, Vivaldi, Edge and Firefox have no shipping date, and on
-      iPhone, Apple enables it in Safari but not in other browsers, even though they share
-      Safari's engine. One tag, no libraries: the browser itself renders the model.
-      <code>stagemode="orbit"</code> gives drag-to-rotate for free. Where <code>&lt;model&gt;</code>
-      is missing, this page swaps in model-viewer showing the same GLB; if that can't load
-      either, the <code>&lt;img&gt;</code> inside remains, the same graceful-degradation
-      pattern as <code>&lt;video&gt;</code>.
+      Chrome and Firefox: no shipping date. One tag,
+      no libraries: the browser itself renders the model. <code>stagemode="orbit"</code>
+      gives drag-to-rotate for free; unsupported browsers fall through to the
+      <code>&lt;img&gt;</code> inside — the same graceful-degradation pattern as <code>&lt;video&gt;</code>.
     </p>
 
     <div class="demo">
       <model stagemode="orbit" id="native-model" aria-label="Astronaut in a spacesuit, 3D model">
-        <source src="models/Astronaut.usdz" type="model/vnd.usdz+zip">
-        <source src="models/Astronaut.glb" type="model/gltf-binary">
+        <source src="../models/Astronaut.usdz" type="model/vnd.usdz+zip">
+        <source src="../models/Astronaut.glb" type="model/gltf-binary">
         <img class="fallback-img" id="model-fallback-img" alt="This browser does not yet support the model element — see Tier 2 below for the scripted equivalent." src="">
       </model>
       <p class="muted" id="model-note">Native rendering status shown in the ladder above.</p>
 
       <div class="ar-wrap" id="ar-wrap">
         <a class="ar-link" rel="ar" id="ar-anchor"
-           href="models/Astronaut.usdz"><img
-             src="models/ar-thumb.png"
+           href="../models/Astronaut.usdz"><img
+             src="../models/ar-thumb.png"
              alt="Astronaut — tap to view in your room with AR Quick Look"
              width="132" height="132"></a>
         <p class="ar-caption">↑ Tap to place it in your room</p>
@@ -435,7 +432,7 @@ N·L shading            // one light, two yarn colours, done</code></pre>
     </div>
     <div class="demo" id="mv-demo" style="display:none;">
       <model-viewer
-        src="models/SheenChair.glb"
+        src="../models/SheenChair.glb"
         alt="An armchair upholstered in fabric with visible sheen, demonstrating the glTF sheen material for textiles"
         camera-controls auto-rotate shadow-intensity="1" exposure="0.9">
       </model-viewer>
@@ -526,7 +523,7 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
 
   <footer>
     <span>Matthew Mounsey-Wood FHEA MA (RCA) LCF Alumni</span>
-    <span>Standalone HTML · no build step · v8 · Three.js r186.1 · self-hosted</span>
+    <span>Standalone HTML · no build step · v7 · Three.js r186.1 · self-hosted</span>
   </footer>
 </main>
 
@@ -586,7 +583,7 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
 
   var hasModel = ('HTMLModelElement' in window) ||
                  !(document.createElement('model') instanceof HTMLUnknownElement);
-  set('badge-model', hasModel, 'native', 'not native — trying model-viewer');
+  set('badge-model', hasModel, 'native', 'falls back to image');
   if (hasModel) document.getElementById('model-note').textContent =
     'Rendered natively by the browser — drag to orbit.';
 
@@ -819,28 +816,6 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
     requestAnimationFrame(frame);
   }
 
-  /* ── Tier 1 fallback rung: no <model>? render the same GLB with
-        model-viewer. Swapped in only once model-viewer has actually
-        loaded, so if the CDN fails the placeholder image stays. ── */
-  function polyfillTier1(){
-    var native = document.getElementById('native-model');
-    var mv = document.createElement('model-viewer');
-    mv.setAttribute('src', 'models/Astronaut.glb');
-    mv.setAttribute('ios-src', 'models/Astronaut.usdz');
-    mv.setAttribute('alt', 'Astronaut in a spacesuit, 3D model');
-    mv.setAttribute('camera-controls', '');
-    mv.setAttribute('ar', '');                       // Android: Scene Viewer / WebXR
-    mv.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-    mv.setAttribute('shadow-intensity', '1');
-    mv.id = 'tier1-fallback';
-    native.parentNode.insertBefore(mv, native);
-    native.style.display = 'none';
-    set('badge-model', false, 'via model-viewer', 'via model-viewer');
-    document.getElementById('model-note').textContent =
-      'This browser has no native <model>, so this is the fallback rung: the same GLB file, ' +
-      'drawn by the model-viewer script. Same astronaut, different engine — drag to orbit.';
-  }
-
   /* ── Optional enhancement: try model-viewer from CDN ────────── */
   var mvStatus = document.getElementById('mv-status');
   function loadMV(urls){
@@ -855,7 +830,6 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
       customElements.whenDefined('model-viewer').then(function(){
         mvStatus.textContent = 'CDN reachable — bonus chair loaded below.';
         document.getElementById('mv-demo').style.display = '';
-        if (!hasModel) polyfillTier1();
       });
     };
     document.head.appendChild(s);
