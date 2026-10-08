@@ -259,13 +259,6 @@
   .mode-switch button + button{ border-left:none; }
   .mode-switch button[aria-pressed="true"]{ background:var(--ink); color:var(--calico); }
   .mode-switch button:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
-  .reset-btn{
-    font-family:inherit; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
-    padding:10px; min-height:44px; border:1.5px solid var(--ink);
-    background:transparent; color:var(--ink); cursor:pointer;
-  }
-  .reset-btn:hover{ background:var(--ink); color:var(--calico); }
-  .reset-btn:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
 </style>
 </head>
 <body>
@@ -376,16 +369,16 @@
 
     <div class="demo">
       <model stagemode="orbit" id="native-model" aria-label="Astronaut in a spacesuit, 3D model">
-        <source src="models/Astronaut.usdz" type="model/vnd.usdz+zip">
-        <source src="models/Astronaut.glb" type="model/gltf-binary">
+        <source src="../models/Astronaut.usdz" type="model/vnd.usdz+zip">
+        <source src="../models/Astronaut.glb" type="model/gltf-binary">
         <img class="fallback-img" id="model-fallback-img" alt="This browser does not yet support the model element — see Tier 2 below for the scripted equivalent." src="">
       </model>
       <p class="muted" id="model-note">Native rendering status shown in the ladder above.</p>
 
       <div class="ar-wrap" id="ar-wrap">
         <a class="ar-link" rel="ar" id="ar-anchor"
-           href="models/Astronaut.usdz"><img
-             src="models/ar-thumb.png"
+           href="../models/Astronaut.usdz"><img
+             src="../models/ar-thumb.png"
              alt="Astronaut — tap to view in your room with AR Quick Look"
              width="132" height="132"></a>
         <p class="ar-caption">↑ Tap to place it in your room</p>
@@ -442,7 +435,7 @@ N·L shading            // one light, two yarn colours, done</code></pre>
     </div>
     <div class="demo" id="mv-demo" style="display:none;">
       <model-viewer
-        src="models/SheenChair.glb"
+        src="../models/SheenChair.glb"
         alt="An armchair upholstered in fabric with visible sheen, demonstrating the glTF sheen material for textiles"
         camera-controls auto-rotate shadow-intensity="1" exposure="0.9">
       </model-viewer>
@@ -459,7 +452,7 @@ N·L shading            // one light, two yarn colours, done</code></pre>
   <!-- ── TIER 3 ── -->
   <section id="tier-3">
     <div class="tier-mark">3</div>
-    <h2>TSL and XPBD — surface and motion, live</h2>
+    <h2>TSL — the material layer CLO's export drops</h2>
     <p>
       A GLB from CLO carries geometry and basic PBR maps, but not glTF's sheen extension —
       so the velvet-ish back-glow of a twill or a pile doesn't survive the trip. Three.js
@@ -468,17 +461,9 @@ N·L shading            // one light, two yarn colours, done</code></pre>
       panel of <strong>3/1 denim twill</strong> — indigo warp, ecru weft — generated
       entirely in the shader, no texture files.
     </p>
-    <p>
-      The panel also moves. It hangs from curtain rings at every sixth point along the rod
-      and is simulated each frame with <strong>XPBD</strong> (extended position-based
-      dynamics): 2,000 points, about 11,500 length constraints for stretch, shear and
-      bending, solved in ten small substeps. Long-range tethers keep it from stretching
-      like jersey: under gravity, 95% of yarn segments stay within 1% of their length.
-      Wind pushes only along the cloth's surface normal, which is why it billows rather than slides.
-    </p>
 
     <div class="demo">
-      <canvas id="tsl-canvas" aria-label="Interactive 3D panel of denim twill hanging from curtain rings, moved by simulated wind and gravity. Drag the cloth to pull it, or drag the background to turn the view."></canvas>
+      <canvas id="tsl-canvas" aria-label="Interactive 3D panel of denim twill with adjustable sheen and iridescence, drag to rotate"></canvas>
       <p class="muted" id="tsl-status" role="status">Tier 3 loads Three.js r186 from a CDN — checking…</p>
 
       <fieldset class="tsl-controls" id="tsl-controls" disabled>
@@ -497,17 +482,6 @@ N·L shading            // one light, two yarn colours, done</code></pre>
           <input type="range" id="r-irid" min="0" max="1" step="0.01" value="0">
         </label>
       </fieldset>
-
-      <fieldset class="tsl-controls" id="phys-controls" disabled>
-        <legend>Cloth physics · XPBD</legend>
-        <label>Wind <output id="o-wind">1.6 m/s</output>
-          <input type="range" id="r-wind" min="0" max="5" step="0.1" value="1.6">
-        </label>
-        <label>Gravity <output id="o-grav">1.00 g</output>
-          <input type="range" id="r-grav" min="0" max="2" step="0.05" value="1">
-        </label>
-        <button type="button" id="cloth-reset" class="reset-btn">Reset cloth</button>
-      </fieldset>
     </div>
 
 <pre><code>import * as THREE from 'three/webgpu';
@@ -517,26 +491,13 @@ const scale = uniform(48);                     // ← slider writes here
 const cloth = new THREE.MeshPhysicalNodeMaterial();
 cloth.colorNode = twill3x1(uv().mul(scale));   // weave drawn in the shader
 cloth.sheenNode = vec3(0.55, 0.62, 0.78).mul(sheen);  // sheen is a COLOUR
-cloth.iridescenceNode = irid.mul(sin(time).mul(.5).add(.5)); // speculative only
-
-// motion: XPBD in plain JavaScript, handed to the GPU every frame
-sim.step(dt, { gravity: 1, wind, normals });   // 10 substeps, tethers, constraints
-geo.attributes.position.array.set(sim.x);
-geo.computeVertexNormals();</code></pre>
+cloth.iridescenceNode = irid.mul(sin(time).mul(.5).add(.5)); // speculative only</code></pre>
 
     <div class="note">
       <strong>Asset truth vs presentation behaviour:</strong> silhouette, seams, fit and drape
       belong in the CLO file. TSL should add surface response, motion and interaction — never
       disguise weak geometry. The <em>Plausible</em> state is the honest one; <em>Speculative</em>
-      is a deliberate, labelled departure. Changing gravity counts as speculative too.
-      That switch is the critical-literacy point, not the shimmer.
-    </div>
-    <div class="note">
-      <strong>What this simulation leaves out:</strong> self-collision. Pull hard enough and the
-      cloth can pass through itself and stay knotted; <em>Reset cloth</em> undoes it. Stopping
-      cloth from crossing itself is a large share of the computing a garment simulator like CLO
-      does, and so is collision with a body. Fabric weight, stretch and bend here are tuned by
-      eye for denim, not measured from a swatch.
+      is a deliberate, labelled departure. That switch is the critical-literacy point, not the shimmer.
     </div>
   </section>
 
@@ -565,7 +526,7 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
 
   <footer>
     <span>Matthew Mounsey-Wood FHEA MA (RCA) LCF Alumni</span>
-    <span>Standalone HTML · no build step · v9 · Three.js r186.1 · XPBD cloth · self-hosted</span>
+    <span>Standalone HTML · no build step · v8 · Three.js r186.1 · self-hosted</span>
   </footer>
 </main>
 
@@ -864,8 +825,8 @@ always                              → CSS 3D + &lt;img&gt; fallback (works off
   function polyfillTier1(){
     var native = document.getElementById('native-model');
     var mv = document.createElement('model-viewer');
-    mv.setAttribute('src', 'models/Astronaut.glb');
-    mv.setAttribute('ios-src', 'models/Astronaut.usdz');
+    mv.setAttribute('src', '../models/Astronaut.glb');
+    mv.setAttribute('ios-src', '../models/Astronaut.usdz');
     mv.setAttribute('alt', 'Astronaut in a spacesuit, 3D model');
     mv.setAttribute('camera-controls', '');
     mv.setAttribute('ar', '');                       // Android: Scene Viewer / WebXR
@@ -925,155 +886,6 @@ try {
 }
 const { Fn, uv, uniform, float, vec3, mix, step, sin, time } = TSL;
 
-  /* XPBD cloth — "small steps" variant (Macklin et al. 2019): many substeps,
-     one constraint pass each. Plain typed arrays, no library. Layout matches
-     THREE.PlaneGeometry: row 0 is the top edge, index = row * cols + col. */
-  function createCloth({ cols, rows, width, height, pinEvery }) {
-    const n = cols * rows;
-    const x  = new Float32Array(n * 3);     // position
-    const xp = new Float32Array(n * 3);     // position at start of substep
-    const v  = new Float32Array(n * 3);     // velocity
-    const w  = new Float32Array(n);         // inverse mass (0 = pinned)
-    const x0 = new Float32Array(n * 3);     // rest layout, for reset
-    const dx = width / (cols - 1), dy = height / (rows - 1);
-
-    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-      const k = j * cols + i;
-      x0[3*k]   = -width / 2 + i * dx;
-      x0[3*k+1] =  height / 2 - j * dy;
-      x0[3*k+2] = 0.002 * Math.sin(i * 1.7 + j * 0.9);   // tiny ripple so wind has a surface to catch
-      // curtain rings: pin every Nth point of the top edge, plus both corners
-      w[k] = (j === 0 && (i % pinEvery === 0 || i === cols - 1)) ? 0 : 1;
-    }
-
-    // constraints: structural (1 apart), shear (diagonal), bending (2 apart)
-    const ci = [], cj = [], comp = [];
-    const add = (a, b, c) => { ci.push(a); cj.push(b); comp.push(c); };
-    const STRETCH = 0, SHEAR = 2e-6, BEND = 2.5e-5;          // m/N; denim: barely stretchy, fairly stiff
-    for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
-      const k = j * cols + i;
-      if (i + 1 < cols) add(k, k + 1, STRETCH);
-      if (j + 1 < rows) add(k, k + cols, STRETCH);
-      if (i + 1 < cols && j + 1 < rows) { add(k, k + cols + 1, SHEAR); add(k + 1, k + cols, SHEAR); }
-      if (i + 2 < cols) add(k, k + 2, BEND);
-      if (j + 2 < rows) add(k, k + 2 * cols, BEND);
-    }
-    const m = ci.length;
-    const A = Int32Array.from(ci), B = Int32Array.from(cj), C = Float32Array.from(comp);
-    const R = new Float32Array(m);
-
-    function reset() {
-      x.set(x0); v.fill(0);
-      for (let c = 0; c < m; c++) {
-        const a = 3*A[c], b = 3*B[c];
-        R[c] = Math.hypot(x0[a]-x0[b], x0[a+1]-x0[b+1], x0[a+2]-x0[b+2]);
-      }
-    }
-    reset();
-
-    /* Long-range attachments (Kim, Chentanez & Müller 2012): tether every free
-       point to its nearest pin; it may move closer, never further than at rest.
-       Stops the cumulative sag-stretch that substeps alone can't remove. */
-    const pins = []; for (let k = 0; k < n; k++) if (w[k] === 0) pins.push(k);
-    const tP = new Int32Array(n), tL = new Float32Array(n);
-    for (let k = 0; k < n; k++) {
-      let best = -1, bd = Infinity;
-      for (const q of pins) {
-        const d = Math.hypot(x0[3*k]-x0[3*q], x0[3*k+1]-x0[3*q+1], x0[3*k+2]-x0[3*q+2]);
-        if (d < bd) { bd = d; best = q; }
-      }
-      tP[k] = best; tL[k] = bd * 1.01;   // 1% slack
-    }
-
-    let grabIdx = -1, grabW = 1;
-    const grabT = new Float32Array(3);
-
-    /* dt: frame time (s). o: { gravity (×g), wind [x,y,z] in m/s, normals, time } */
-    function step(dt, o) {
-      dt = Math.min(dt, 1 / 30);
-      const SUB = o.substeps || 10, h = dt / SUB;
-      const g = -9.81 * o.gravity;
-      const N = o.normals, wv = o.wind, t = o.time;
-      const KAERO = 1.4, DAMP = Math.exp(-0.9 * h);
-      for (let s = 0; s < SUB; s++) {
-        // 1. predict: integrate forces
-        for (let k = 0; k < n; k++) {
-          const k3 = 3 * k;
-          xp[k3] = x[k3]; xp[k3+1] = x[k3+1]; xp[k3+2] = x[k3+2];
-          if (w[k] === 0) continue;
-          let ax = 0, ay = g, az = 0;
-          if (N) {
-            // gusting wind field, varying across the cloth
-            const gust = 0.65 + 0.35 * Math.sin(1.7 * t + 2.3 * x[k3]) * Math.sin(0.9 * t + 1.1 * x[k3+1]);
-            const rx = wv[0] * gust - v[k3], ry = wv[1] * gust - v[k3+1], rz = wv[2] * gust - v[k3+2];
-            const nx = N[k3], ny = N[k3+1], nz = N[k3+2];
-            const d = (rx * nx + ry * ny + rz * nz) * KAERO;   // pressure along the normal only
-            ax += d * nx; ay += d * ny; az += d * nz;
-          }
-          v[k3]   = (v[k3]   + ax * h) * DAMP;
-          v[k3+1] = (v[k3+1] + ay * h) * DAMP;
-          v[k3+2] = (v[k3+2] + az * h) * DAMP;
-          x[k3] += v[k3] * h; x[k3+1] += v[k3+1] * h; x[k3+2] += v[k3+2] * h;
-        }
-        if (grabIdx >= 0) { const g3 = 3 * grabIdx; x[g3] = grabT[0]; x[g3+1] = grabT[1]; x[g3+2] = grabT[2]; }
-        // 2a. tethers first (inequality: only pull back when over-long), so the
-        //     distance constraints below always get the last word
-        for (let k = 0; k < n; k++) {
-          if (w[k] === 0) continue;
-          const k3 = 3*k, q3 = 3*tP[k];
-          const ex = x[k3]-x[q3], ey = x[k3+1]-x[q3+1], ez = x[k3+2]-x[q3+2];
-          const len = Math.sqrt(ex*ex + ey*ey + ez*ez);
-          if (len > tL[k]) { const f = tL[k] / len; x[k3] = x[q3]+ex*f; x[k3+1] = x[q3+1]+ey*f; x[k3+2] = x[q3+2]+ez*f; }
-        }
-        // 2. solve distance constraints (XPBD: compliance scaled by h²)
-        const ih2 = 1 / (h * h);
-        for (let c = 0; c < m; c++) {
-          const a = A[c], b = B[c], wa = w[a], wb = w[b], ws = wa + wb;
-          if (ws === 0) continue;
-          const a3 = 3*a, b3 = 3*b;
-          const ex = x[a3]-x[b3], ey = x[a3+1]-x[b3+1], ez = x[a3+2]-x[b3+2];
-          const len = Math.sqrt(ex*ex + ey*ey + ez*ez);
-          if (len < 1e-9) continue;
-          const dl = -(len - R[c]) / (ws + C[c] * ih2) / len;
-          x[a3] += ex*dl*wa; x[a3+1] += ey*dl*wa; x[a3+2] += ez*dl*wa;
-          x[b3] -= ex*dl*wb; x[b3+1] -= ey*dl*wb; x[b3+2] -= ez*dl*wb;
-        }
-        // 3. velocities from positions
-        const ih = 1 / h;
-        for (let k = 0; k < n; k++) {
-          if (w[k] === 0) { v[3*k] = v[3*k+1] = v[3*k+2] = 0; continue; }
-          const k3 = 3 * k;
-          v[k3] = (x[k3] - xp[k3]) * ih; v[k3+1] = (x[k3+1] - xp[k3+1]) * ih; v[k3+2] = (x[k3+2] - xp[k3+2]) * ih;
-        }
-      }
-    }
-
-    function grab(k, tx, ty, tz) {
-      if (grabIdx !== k) {
-        if (w[k] === 0) return;            // rings stay on the rod
-        release(); grabIdx = k; grabW = w[k]; w[k] = 0;
-      }
-      // keep the hand within the fabric's reach from its ring: cloth can't be pulled longer than it is
-      const q3 = 3 * tP[k];
-      let ex = tx - x[q3], ey = ty - x[q3+1], ez = tz - x[q3+2];
-      const len = Math.sqrt(ex*ex + ey*ey + ez*ez), lim = tL[k] * 0.97;
-      if (len > lim) { const f = lim / len; ex *= f; ey *= f; ez *= f; }
-      grabT[0] = x[q3] + ex; grabT[1] = x[q3+1] + ey; grabT[2] = x[q3+2] + ez;
-    }
-    function release() { if (grabIdx >= 0) { w[grabIdx] = grabW; grabIdx = -1; } }
-    function nearest(px, py, pz) {
-      let best = -1, bd = Infinity;
-      for (let k = 0; k < n; k++) {
-        if (w[k] === 0 && k !== grabIdx) continue;   // never pick a ring
-        const d = (x[3*k]-px)**2 + (x[3*k+1]-py)**2 + (x[3*k+2]-pz)**2;
-        if (d < bd) { bd = d; best = k; }
-      }
-      return best;
-    }
-    return { x, w, n, m, A, B, R, step, reset, grab, release, nearest, get grabbing() { return grabIdx >= 0; } };
-  }
-
-
 try {
   /* ── Renderer: WebGPU, with automatic WebGL 2 fallback ── */
   const renderer = new THREE.WebGPURenderer({ canvas, antialias: true });
@@ -1081,7 +893,7 @@ try {
   const isGPU = !!(renderer.backend && renderer.backend.isWebGPUBackend);
   setBadge(true, isGPU ? 'WebGPU' : 'WebGL 2 fallback');
   status.textContent = 'Running on ' + (isGPU ? 'WebGPU' : 'the WebGL 2 fallback') +
-    ' — same TSL graph, compiled for whichever backend this device has. Drag the cloth to pull it; drag the background to turn.';
+    ' — same TSL graph, compiled for whichever backend this device has. Drag to turn.';
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene  = new THREE.Scene();
@@ -1099,12 +911,15 @@ try {
     scene.environmentIntensity = 0.45;
   } catch (e) { /* lights alone are enough; environment is a nicety */ }
 
-  /* ── Geometry: a 40 × 50 grid, positions owned by the cloth solver ── */
-  const COLS = 40, ROWS = 50;
-  const geo = new THREE.PlaneGeometry(1.6, 2.0, COLS - 1, ROWS - 1);   // same vertex order as the solver
-  const sim = createCloth({ cols: COLS, rows: ROWS, width: 1.6, height: 2.0, pinEvery: 6 });
-  geo.attributes.position.setUsage(THREE.DynamicDrawUsage);
-  geo.attributes.position.array.set(sim.x);
+  /* ── Geometry: a hanging panel, folds deepening toward the hem ── */
+  const geo = new THREE.PlaneGeometry(1.6, 2.0, 96, 120);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    const hang = (1.0 - y) / 2.0;                 // 0 at the rod, 1 at the hem
+    const z = Math.sin(x * 7.5 + 0.6) * 0.075 * hang + Math.sin(x * 3.1) * 0.03 * hang;
+    pos.setZ(i, z);
+  }
   geo.computeVertexNormals();
 
   /* ── The TSL material ── */
@@ -1156,9 +971,6 @@ try {
   /* ── Controls: plain DOM inputs writing to shader uniforms ── */
   const $ = id => document.getElementById(id);
   const rS = $('r-scale'), rH = $('r-sheen'), rI = $('r-irid');
-  const rW = $('r-wind'), rG = $('r-grav');
-  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (REDUCED) rW.value = 0;                    // no wind until asked for
   const bP = $('mode-plausible'), bX = $('mode-speculative');
   function setMode(spec){
     bP.setAttribute('aria-pressed', String(!spec));
@@ -1169,57 +981,26 @@ try {
     $('o-scale').textContent = rS.value;
     $('o-sheen').textContent = (+rH.value).toFixed(2);
     $('o-irid').textContent  = (+rI.value).toFixed(2);
-    $('o-wind').textContent  = (+rW.value).toFixed(1) + ' m/s';
-    $('o-grav').textContent  = (+rG.value).toFixed(2) + ' g';
-    // iridescent denim, or any gravity but Earth's, is honestly speculative
-    setMode(+rI.value > 0 || Math.abs(+rG.value - 1) > 0.001);
+    setMode(+rI.value > 0);       // any iridescence on denim is, honestly, speculative
   }
-  [rS, rH, rI, rW, rG].forEach(r => r.addEventListener('input', sync));
-  $('cloth-reset').addEventListener('click', () => sim.reset());
-  bP.addEventListener('click', () => { rH.value = 0.35; rI.value = 0; rG.value = 1; sync(); });
+  rS.addEventListener('input', sync); rH.addEventListener('input', sync); rI.addEventListener('input', sync);
+  bP.addEventListener('click', () => { rH.value = 0.35; rI.value = 0;    sync(); });
   bX.addEventListener('click', () => { rH.value = 0.8;  rI.value = 0.85; sync(); });
   ctrls.disabled = false;
-  $('phys-controls').disabled = false;
   sync();
 
-  /* ── Pointer: drag the cloth to pull it; drag elsewhere to turn ── */
-  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-  const dragPlane = new THREE.Plane(), hitW = new THREE.Vector3(), camDir = new THREE.Vector3();
-  let ry = -0.35, mode = null, lx = 0, grabK = -1;
-  function toNDC(e){
-    const r = canvas.getBoundingClientRect();
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    return r;
-  }
-  canvas.addEventListener('pointerdown', e => {
-    canvas.setPointerCapture(e.pointerId);
-    toNDC(e); ray.setFromCamera(ndc, camera);
-    geo.computeBoundingSphere();                 // the cloth has moved since last time
-    const hit = ray.intersectObject(panel, false)[0];
-    if (hit) {
-      const l = panel.worldToLocal(hit.point.clone());
-      grabK = sim.nearest(l.x, l.y, l.z);
-      camera.getWorldDirection(camDir);
-      dragPlane.setFromNormalAndCoplanarPoint(camDir, hit.point);   // pull in the screen plane
-      sim.grab(grabK, l.x, l.y, l.z);
-      mode = 'grab';
-    } else { mode = 'turn'; lx = e.clientX; }
-  });
+  /* ── Drag to turn; idle sway unless reduced motion ── */
+  let ry = -0.35, dragging = false, lx = 0;
+  let idle = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  canvas.addEventListener('pointerdown', e => { dragging = true; lx = e.clientX; idle = false; canvas.setPointerCapture(e.pointerId); });
   canvas.addEventListener('pointermove', e => {
-    const r = toNDC(e);
+    const r = canvas.getBoundingClientRect();
     pointerU.value = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    if (mode === 'turn') { ry += (e.clientX - lx) * 0.01; lx = e.clientX; }
-    else if (mode === 'grab') {
-      ray.setFromCamera(ndc, camera);
-      if (ray.ray.intersectPlane(dragPlane, hitW)) {
-        const l = panel.worldToLocal(hitW.clone());
-        sim.grab(grabK, l.x, l.y, l.z);
-      }
-    }
+    if (!dragging) return;
+    ry += (e.clientX - lx) * 0.01; lx = e.clientX;
   });
-  const endDrag = () => { if (mode === 'grab') sim.release(); mode = null; grabK = -1; };
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointerup', () => dragging = false);
+  canvas.addEventListener('pointercancel', () => dragging = false);
 
   /* ── Render only while on screen (battery) ── */
   function resize(){
@@ -1228,26 +1009,10 @@ try {
     camera.aspect = w / Math.max(h, 1); camera.updateProjectionMatrix();
   }
   resize(); addEventListener('resize', resize);
-  const WIND_DIR = [0.42, 0, 0.91];               // a draught from behind and to the left
-  let last = performance.now(), simMs = 0, substeps = 10;
+  const t0 = performance.now();
   function frame(){
-    const now = performance.now(), dt = (now - last) / 1000; last = now;
+    if (idle) ry = -0.35 + Math.sin((performance.now() - t0) / 2600) * 0.55;
     rig.rotation.y = ry;
-    const ws = +rW.value, c = Math.cos(ry), sn = Math.sin(ry);
-    const wx = WIND_DIR[0] * ws, wz = WIND_DIR[2] * ws;
-    const t1 = performance.now();
-    sim.step(dt, {
-      gravity: +rG.value,
-      wind: [wx * c - wz * sn, 0, wx * sn + wz * c],   // world wind, turned into the cloth's frame
-      normals: geo.attributes.normal.array,
-      time: now / 1000,
-      substeps
-    });
-    simMs = simMs * 0.95 + (performance.now() - t1) * 0.05;
-    if (simMs > 9 && substeps > 5) { substeps--; simMs = 6; }   // slower phone: fewer substeps
-    geo.attributes.position.array.set(sim.x);
-    geo.attributes.position.needsUpdate = true;
-    geo.computeVertexNormals();
     renderer.render(scene, camera);
   }
   new IntersectionObserver(([en]) => renderer.setAnimationLoop(en.isIntersecting ? frame : null))
